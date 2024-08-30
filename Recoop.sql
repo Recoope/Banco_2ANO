@@ -89,7 +89,7 @@ create table produto(
     tipo_produto varchar,
     valor_inicial_produto numeric,
     valor_final_produto numeric,
-    peso numeric,
+    peso_produto numeric,
     foto_produto varchar
 );
 
