@@ -89,7 +89,7 @@ create table produto(
     tipo_produto varchar,
     valor_inicial_produto numeric,
     valor_final_produto numeric,
-    peso numeric,
+    peso_produto numeric,
     foto_produto varchar
 );
 
@@ -136,7 +136,7 @@ begin
         end if;
     else raise exception 'Email deve conter @ e .!!!';
     end if;
-commit;
+-- commit;
 end;
 $$;
 
@@ -158,7 +158,7 @@ begin
         end if;
     else raise exception 'Email não pode conter números e deve ter (@ e .)!!!';
     end if;
-commit;
+-- commit;
 end;
 $$;
 
@@ -174,7 +174,7 @@ begin
         end if;
     else raise exception 'Data de início menor do que a de fim!!!';
     end if;
-commit;
+-- commit;
 end;
 $$;
 
@@ -193,7 +193,7 @@ begin
         end if;
     else raise exception 'Data de início menor do que a de fim!!!';
     end if;
-commit;
+-- commit;
 end;
 $$;
 
@@ -206,7 +206,7 @@ begin
         INSERT INTO endereco (cidade, rua, numero, registro_empresa) VALUES (en_cidade, en_rua, en_numero, registro_empresa);
     else raise exception 'Cidade não pode conter número!!!';
     end if;
-commit;
+-- commit;
 end;
 $$;
 
