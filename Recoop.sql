@@ -5,7 +5,7 @@ select * from endereco;
 select * from leilao;
 select * from lance;
 
-
+#
 select * from log_cooperativa;
 select * from log_empresa;
 select * from log_produto;
@@ -84,15 +84,6 @@ create table empresa(
     cnpj_empresa varchar(14) primary key
 );
 
-create table produto(
-    id_produto serial primary key,
-    tipo_produto varchar,
-    valor_inicial_produto numeric,
-    valor_final_produto numeric,
-    peso_produto numeric,
-    foto_produto varchar
-);
-
 create table endereco(
     id_endereco serial primary key,
     cidade varchar,
@@ -108,12 +99,19 @@ create table leilao(
    hora_leilao time,
    leilao_fim VARCHAR(3),
    id_endereco int REFERENCES endereco(id_endereco),
-   id_produto int REFERENCES produto(id_produto),
    cnpj_cooperativa varchar REFERENCES cooperativa(cnpj_cooperativa)
 );
 
---tabela app
--- preguntar na aula do grilo
+create table produto(
+    id_produto serial primary key,
+    tipo_produto varchar,
+    valor_inicial_produto numeric,
+    valor_final_produto numeric,
+    peso_produto numeric,
+    foto_produto varchar,
+    id_leilao int REFERENCES leilao(id_leilao)
+);
+
 CREATE TABLE lance (
    id_lance SERIAL PRIMARY KEY,
    id_leilao INT REFERENCES leilao(id_leilao),
@@ -165,35 +163,58 @@ end;
 $$;
 
 --Leilão
-create or replace procedure insert_leilao (l_data_inicio date, l_data_fim date, l_detalhes varchar, l_hora time, l_id_endereco int, l_id_produto int, l_cnpj_cooperativa varchar(14))
+CREATE OR REPLACE PROCEDURE insert_leilao (
+    lan_valor numeric, 
+    lan_data_lance date, 
+    lan_cnpj_empresa varchar, 
+    leilao_data_inicio date, 
+    leilao_data_fim date, 
+    lan_id_leilao int
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    -- Verificar se a data de início é anterior à data de fim
+    IF leilao_data_inicio < leilao_data_fim THEN
+        -- Verificar se o endereço e o produto existem
+        IF EXISTS (SELECT 1 FROM endereco WHERE id_endereco = lan_id_leilao) AND
+           EXISTS (SELECT 1 FROM produto WHERE id_produto = lan_id_leilao) THEN
+            -- Inserir um novo leilão
+            INSERT INTO leilao (data_inicio_leilao, data_fim_leilao, detalhes_leilao, hora_leilao, id_endereco, id_produto)
+            VALUES (leilao_data_inicio, leilao_data_fim, lan_cnpj_empresa, lan_data_lance, lan_id_leilao, lan_id_leilao);
+        ELSE
+            RAISE EXCEPTION 'Endereço ou produto não existe!!!';
+        END IF;
+    ELSE
+        RAISE EXCEPTION 'Data de início deve ser anterior à data de fim!!!';
+    END IF;
+END;
+$$;
+
+
+--Produto
+create or replace procedure insert_produto (p_tipo_produto varchar, p_valor_inicial_produto numeric, p_peso_produto numeric, p_foto_produto varchar,p_id_leilao int)
     language 'plpgsql' as
 $$
 begin
-    if l_data_inicio < l_data_fim then
-        if exists (select id_endereco from endereco where id_endereco=l_id_endereco) and exists (select id_produto from produto where id_produto=l_id_produto) then
-            INSERT INTO leilao (data_inicio_leilao, data_fim_leilao, detalhes_leilao, hora_leilao,id_endereco,id_produto,cnpj_cooperativa) VALUES (l_data_inicio, l_data_fim, l_detalhes, l_hora,l_id_endereco,l_id_produto,l_cnpj_cooperativa);
-        else raise exception 'Esse endereço ou produto não existe!!!';
-        end if;
-    else raise exception 'Data de início menor do que a de fim!!!';
+    if exists (select id_leilao from produto where id_leilao=p_id_leilao) then
+        INSERT INTO produto (tipo_produto, valor_inicial_produto, peso_produto, foto_produto) VALUES (p_tipo_produto, p_valor_inicial_produto, p_peso_produto,p_foto_produto);
+    else raise exception 'Esse endereço ou produto não existe!!!';
     end if;
 -- commit;
 end;
 $$;
 
 --Lance
-create or replace procedure insert_leilao (lan_valor numeric, lan_data_lance date, lan_cnpj_empresa varchar, leilao_data_inicio date, leilao_data_fim date, lan_id_leilao int)
+create or replace procedure insert_lance (lan_id_leilao int, lan_cnpj_empresa varchar(14), lan_valor numeric, lan_data date)
     language 'plpgsql' as
 $$
 begin
-    if leilao_data_inicio < leilao_data_fim then
-        if lan_data_lance <= leilao_data_fim and leilao_data_inicio >= lan_data_lance then
-            if exists (select id_leilao from leilao where id_leilao=lan_id_leilao) then
-                INSERT INTO leilao (data_inicio_leilao, data_fim_leilao, detalhes_leilao, hora_leilao, lan_id_produto, lan_cnpj_cooperativa) VALUES (l_data_inicio, l_data_fim, l_detalhes, l_hora);
-            else raise exception 'Esse leilão não existe!!!';
-            end if;
-        else raise exception 'A data do lance ou já acabou ou acabou!!!';
+    if exists (select cnpj_empresa from empresa where cnpj_empresa=lan_cnpj_empresa) then
+        if exists (select id_leilao from leilao where id_leilao=lan_id_leilao) then
+            INSERT INTO lance (id_leilao, cnpj_empresa, valor, data_lance) VALUES (lan_id_leilao, lan_cnpj_empresa, lan_valor, lan_data);
+        else raise exception 'Esse leilão não existe!!!';
         end if;
-    else raise exception 'Data de início menor do que a de fim!!!';
+    else raise exception 'Esse cnpj da empresa não existe!!!';
     end if;
 -- commit;
 end;
