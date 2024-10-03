@@ -5,7 +5,6 @@ select * from endereco;
 select * from leilao;
 select * from lance;
 
-#
 select * from log_cooperativa;
 select * from log_empresa;
 select * from log_produto;
@@ -221,12 +220,12 @@ end;
 $$;
 
 --Endereco
-create or replace procedure insert_endereco (en_cidade varchar, en_rua varchar, en_numero int, en_registro_empresa date)
+create or replace procedure insert_endereco (en_id int,en_cidade varchar, en_rua varchar, en_numero int)
     language 'plpgsql' as
 $$
 begin
     if not en_cidade SIMILAR TO '%[0-9]%' then
-        INSERT INTO endereco (cidade, rua, numero, registro_empresa) VALUES (en_cidade, en_rua, en_numero, registro_empresa);
+        INSERT INTO endereco (id_endereco,cidade, rua, numero) VALUES (en_id, en_cidade, en_rua, en_numero);
     else raise exception 'Cidade não pode conter número!!!';
     end if;
 -- commit;
@@ -346,4 +345,4 @@ language 'plpgsql';
 create trigger trg_log_lance
     after insert or update or delete on lance
     for each row
-    execute procedure func_log_lance();
+    execute procedure func_log_lance(); 
