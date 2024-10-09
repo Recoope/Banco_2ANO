@@ -1,17 +1,18 @@
-select * from cooperativa;
-select * from empresa;
-select * from produto;
-select * from endereco;
-select * from leilao;
-select * from lance;
-
-select * from log_cooperativa;
-select * from log_empresa;
-select * from log_produto;
-select * from log_endereco;
-select * from log_leilao;
-select * from log_lance;
-
+--Drops
+drop table if exists log_cooperativa cascade;
+drop table if exists log_empresa cascade;
+drop table if exists log_leilao cascade;
+drop table if exists log_produto cascade;
+drop table if exists log_endereco cascade;
+drop table if exists log_lance cascade;
+ 
+drop table if exists lance cascade;
+drop table if exists leilao cascade;
+drop table if exists produto cascade;
+drop table if exists endereco cascade;
+drop table if exists empresa cascade;
+drop table if exists cooperativa cascade;
+ 
 --Tabelas de log
 create table log_cooperativa(
     log_cooperativa_id serial primary key,
@@ -21,7 +22,7 @@ create table log_cooperativa(
     usuario varchar(80),
     delete_old varchar(14)
 );
-
+ 
 create table log_empresa(
     log_empresa_id serial primary key,
     cod_empresa varchar(14),
@@ -30,7 +31,7 @@ create table log_empresa(
     usuario varchar(80),
     delete_old varchar(14)
 );
-
+ 
 create table log_leilao(
     log_leilao_id serial primary key,
     cod_leilao int,
@@ -39,7 +40,7 @@ create table log_leilao(
     usuario varchar(80),
     delete_old int
 );
-
+ 
 create table log_produto(
     log_produto_id serial primary key,
     cod_produto int,
@@ -48,7 +49,7 @@ create table log_produto(
     usuario varchar(80),
     delete_old int
 );
-
+ 
 create table log_endereco(
     log_endereco_id serial primary key,
     cod_endereco int,
@@ -57,7 +58,7 @@ create table log_endereco(
     usuario varchar(80),
     delete_old int
 );
-
+ 
 create table log_lance(
     log_lance serial primary key,
     cod_lance int,
@@ -66,7 +67,7 @@ create table log_lance(
     usuario varchar(80),
     delete_old int
 );
-
+ 
 --Tabelas normalizadas....................................................
 create table cooperativa(
     cnpj_cooperativa VARCHAR(14) primary key,
@@ -75,7 +76,7 @@ create table cooperativa(
     senha_cooperativa varchar,
     status VARCHAR DEFAULT 'Ativo'
 );
-
+ 
 create table empresa(
     nome_empresa varchar,
     email_empresa varchar,
@@ -83,7 +84,7 @@ create table empresa(
     telefone_empresa varchar,
     cnpj_empresa varchar(14) primary key
 );
-
+ 
 create table endereco(
     id_endereco serial primary key,
     cidade varchar,
@@ -91,17 +92,7 @@ create table endereco(
     numero int,
     status VARCHAR DEFAULT 'Ativo'
 );
-
-create table leilao(
-   id_leilao serial primary key,
-   data_inicio_leilao date,
-   data_fim_leilao date,
-   hora_leilao time,
-   id_endereco int REFERENCES endereco(id_endereco),
-   cnpj_cooperativa varchar REFERENCES cooperativa(cnpj_cooperativa),
-   status VARCHAR DEFAULT 'Ativo'
-);
-
+ 
 create table produto(
     id_produto serial primary key,
     tipo_produto varchar,
@@ -109,16 +100,27 @@ create table produto(
     valor_final_produto numeric,
     peso_produto numeric,
     foto_produto varchar,
-    id_leilao int REFERENCES leilao(id_leilao),
     status VARCHAR DEFAULT 'Ativo'
 );
-
+ 
+create table leilao(
+    id_leilao serial primary key,
+    data_inicio_leilao date,
+    data_fim_leilao date,
+    detalhes_leilao varchar,
+    hora_leilao time,
+    id_endereco int REFERENCES endereco(id_endereco),
+    cnpj_cooperativa varchar REFERENCES cooperativa(cnpj_cooperativa),
+    id_produto int REFERENCES produto(id_produto),
+    status VARCHAR DEFAULT 'Ativo'
+);
+ 
 CREATE TABLE lance (
-   id_lance SERIAL PRIMARY KEY,
-   id_leilao INT REFERENCES leilao(id_leilao),
-   cnpj_empresa varchar REFERENCES empresa(cnpj_empresa),
-   valor NUMERIC,
-   data_lance DATE
+    id_lance SERIAL PRIMARY KEY,
+    id_leilao INT REFERENCES leilao(id_leilao),
+    cnpj_empresa varchar REFERENCES empresa(cnpj_empresa),
+    valor NUMERIC,
+    data_lance DATE
 );
 
 --Procedure para verificar se tudo que foi para o banco esta certo........................................
@@ -140,7 +142,7 @@ begin
 -- commit;
 end;
 $$;
-
+ 
 --Empresa
 create or replace procedure insert_empresa (e_nome varchar, e_email varchar, e_senha varchar, e_telefone varchar, e_cnpj varchar)
     language 'plpgsql' as
@@ -162,27 +164,29 @@ begin
 -- commit;
 end;
 $$;
-
+ 
 --Leilão
 CREATE OR REPLACE PROCEDURE insert_leilao (
-	lan_id_endereco int,
-    lan_cnpj_cooperativa varchar, 
-    leilao_data_inicio date, 
-    leilao_data_fim date, 
+    lan_id_endereco int,
+    lan_cnpj_cooperativa varchar,
+    leilao_data_inicio date,
+    leilao_data_fim date,
+    leilao_detalhes_leilao varchar,
     lan_id_leilao int,
     lan_hora time,
+    lan_id_produto int,
     lan_status varchar
-    
+ 
 )
-LANGUAGE plpgsql AS $$
+    LANGUAGE plpgsql AS $$
 BEGIN
     -- Verificar se a data de início é anterior à data de fim
     IF leilao_data_inicio < leilao_data_fim THEN
         IF EXISTS (SELECT 1 FROM endereco WHERE id_endereco = lan_id_endereco) AND
            EXISTS (SELECT 1 FROM cooperativa WHERE cnpj_cooperativa = lan_cnpj_cooperativa) then
-           
-            INSERT INTO leilao (id_leilao,data_inicio_leilao, data_fim_leilao, hora_leilao, id_endereco, cnpj_cooperativa, status)
-            VALUES (lan_id_leilao,leilao_data_inicio, leilao_data_fim,lan_hora, lan_id_endereco, lan_cnpj_cooperativa,lan_status);
+ 
+            INSERT INTO leilao (id_leilao,data_inicio_leilao, data_fim_leilao, detalhes_leilao, hora_leilao, id_endereco, cnpj_cooperativa, id_produto, status)
+            VALUES (lan_id_leilao,leilao_data_inicio, leilao_data_fim, leilao_detalhes_leilao, lan_hora, lan_id_endereco, lan_cnpj_cooperativa, lan_id_produto, lan_status);
         else
             RAISE EXCEPTION 'Endereço ou produto não existe!!!';
         END IF;
@@ -191,21 +195,21 @@ BEGIN
     END IF;
 END;
 $$;
-
-
+ 
+ 
 --Produto
-create or replace procedure insert_produto (p_id_produto int,p_tipo_produto varchar, p_valor_inicial_produto numeric, p_peso_produto numeric, p_foto_produto varchar,p_id_leilao int, p_status varchar)
+create or replace procedure insert_produto (p_id_produto int,p_tipo_produto varchar, p_valor_inicial_produto numeric, p_peso_produto numeric, p_foto_produto varchar, p_status varchar)
     language 'plpgsql' as
 $$
 begin
-    if exists (select id_leilao from leilao where id_leilao=p_id_leilao) then
-        INSERT INTO produto (id_produto,tipo_produto, valor_inicial_produto, peso_produto, foto_produto, id_leilao,status) VALUES (p_id_produto, p_tipo_produto, p_valor_inicial_produto, p_peso_produto,p_foto_produto, p_id_leilao,p_status);
-    else raise exception 'Esse leilão não existe!!!';
+    if (p_valor_inicial_produto > 0) then
+        INSERT INTO produto (id_produto,tipo_produto, valor_inicial_produto, peso_produto, foto_produto,status) VALUES (p_id_produto, p_tipo_produto, p_valor_inicial_produto, p_peso_produto,p_foto_produto,p_status);
+    else raise exception 'O valor do produto não pode ser negativo!!!';
     end if;
 -- commit;
 end;
 $$;
-
+ 
 --Lance
 create or replace procedure insert_lance (lan_id_lance int, lan_id_leilao int, lan_cnpj_empresa varchar(14), lan_valor numeric, lan_data date)
     language 'plpgsql' as
@@ -221,7 +225,7 @@ begin
 -- commit;
 end;
 $$;
-
+ 
 --Endereco
 create or replace procedure insert_endereco (en_id int,en_cidade varchar, en_rua varchar, en_numero int, en_status varchar)
     language 'plpgsql' as
@@ -234,140 +238,135 @@ begin
 -- commit;
 end;
 $$;
-
+ 
 --Função de trigger....................................................
 --Cooperativa
 create or replace function func_log_cooperativa()
-returns trigger as
+    returns trigger as
 $$
 declare
-usuario varchar(80);
+    usuario varchar(80);
 begin
-select usename from pg_user into usuario;
-insert into log_cooperativa (cod_cooperativa,data_alteracao,operacao,usuario,delete_old) values (new.cnpj_cooperativa,current_date,tg_op,usuario,old.cnpj_cooperativa);
-return new;
+    select usename from pg_user into usuario;
+    insert into log_cooperativa (cod_cooperativa,data_alteracao,operacao,usuario,delete_old) values (new.cnpj_cooperativa,current_date,tg_op,usuario,old.cnpj_cooperativa);
+    return new;
 end;
 $$
-language 'plpgsql';
-
+    language 'plpgsql';
+ 
 create trigger trg_log_cooperativa
     after insert or update or delete on cooperativa
     for each row
-    execute procedure func_log_cooperativa();
-
+execute procedure func_log_cooperativa();
+ 
 --Empresa
 create or replace function func_log_empresa()
-returns trigger as
+    returns trigger as
 $$
 declare
-usuario varchar(80);
+    usuario varchar(80);
 begin
-select usename from pg_user into usuario;
-insert into log_empresa (cod_empresa,data_alteracao,operacao,usuario,delete_old) values (new.cnpj_empresa,current_date,tg_op,usuario,old.cnpj_empresa);
-return new;
+    select usename from pg_user into usuario;
+    insert into log_empresa (cod_empresa,data_alteracao,operacao,usuario,delete_old) values (new.cnpj_empresa,current_date,tg_op,usuario,old.cnpj_empresa);
+    return new;
 end;
 $$
-language 'plpgsql';
-
+    language 'plpgsql';
+ 
 create trigger trg_log_empresa
     after insert or update or delete on empresa
     for each row
-    execute procedure func_log_empresa();
-
+execute procedure func_log_empresa();
+ 
 --Leilao
 create or replace function func_log_leilao()
-returns trigger as
+    returns trigger as
 $$
 declare
-usuario varchar(80);
+    usuario varchar(80);
 begin
-select usename from pg_user into usuario;
-insert into log_leilao (cod_leilao,data_alteracao,operacao,usuario,delete_old) values (new.id_leilao,current_date,tg_op,usuario,old.id_leilao);
-return new;
+    select usename from pg_user into usuario;
+    insert into log_leilao (cod_leilao,data_alteracao,operacao,usuario,delete_old) values (new.id_leilao,current_date,tg_op,usuario,old.id_leilao);
+    return new;
 end;
 $$
-language 'plpgsql';
-
+    language 'plpgsql';
+ 
 create trigger trg_log_leilao
     after insert or update or delete on leilao
     for each row
-    execute procedure func_log_leilao();
-
+execute procedure func_log_leilao();
+ 
 --Produto
 create or replace function func_log_produto()
-returns trigger as
+    returns trigger as
 $$
 declare
-usuario varchar(80);
+    usuario varchar(80);
 begin
-select usename from pg_user into usuario;
-insert into log_produto (cod_produto,data_alteracao,operacao,usuario,delete_old) values (new.id_produto,current_date,tg_op,usuario,old.id_produto);
-return new;
+    select usename from pg_user into usuario;
+    insert into log_produto (cod_produto,data_alteracao,operacao,usuario,delete_old) values (new.id_produto,current_date,tg_op,usuario,old.id_produto);
+    return new;
 end;
 $$
-language 'plpgsql';
-
+    language 'plpgsql';
+ 
 create trigger trg_log_produto
     after insert or update or delete on produto
     for each row
-    execute procedure func_log_produto();
-
+execute procedure func_log_produto();
+ 
 --Endereco
 create or replace function func_log_endereco()
-returns trigger as
+    returns trigger as
 $$
 declare
-usuario varchar(80);
+    usuario varchar(80);
 begin
-select usename from pg_user into usuario;
-insert into log_endereco (cod_endereco,data_alteracao,operacao,usuario,delete_old) values (new.id_endereco,current_date,tg_op,usuario,old.id_endereco);
-return new;
+    select usename from pg_user into usuario;
+    insert into log_endereco (cod_endereco,data_alteracao,operacao,usuario,delete_old) values (new.id_endereco,current_date,tg_op,usuario,old.id_endereco);
+    return new;
 end;
 $$
-language 'plpgsql';
-
+    language 'plpgsql';
+ 
 create trigger trg_log_endereco
     after insert or update or delete on endereco
     for each row
-    execute procedure func_log_endereco();
-
+execute procedure func_log_endereco();
+ 
 --Lance
 create or replace function func_log_lance()
-returns trigger as
+    returns trigger as
 $$
 declare
-usuario varchar(80);
+    usuario varchar(80);
 begin
-select usename from pg_user into usuario;
-insert into log_lance (cod_lance,data_alteracao,operacao,usuario,delete_old) values (new.id_lance,current_date,tg_op,usuario,old.id_lance);
-return new;
+    select usename from pg_user into usuario;
+    insert into log_lance (cod_lance,data_alteracao,operacao,usuario,delete_old) values (new.id_lance,current_date,tg_op,usuario,old.id_lance);
+    return new;
 end;
 $$
-language 'plpgsql';
-
+    language 'plpgsql';
+ 
 create trigger trg_log_lance
     after insert or update or delete on lance
     for each row
-    execute procedure func_log_lance(); 
+execute procedure func_log_lance();
+
+
+select * from cooperativa c 
+select * from endereco e 
+select * from produto
+select * from leilao l 
 
 
 
 
 
--- TESTES ===================================================================================
--- lan_id_endereco int,
---     lan_cnpj_cooperativa varchar, 
---     leilao_data_inicio date, 
---     leilao_data_fim date, 
---     lan_id_leilao int,
---     lan_hora time,
---     lan_status varchar
-
--- (int(df_leilao['id_endereco'][i]), df_leilao['id_cooperativa'][i], df_leilao['data_inicio'][i], 
---                      df_leilao['data_fim'][i], int(df_leilao['id'][i]), df_leilao['hora'][i]))
-
--- CALL insert_leilao(1, '12345678901234'::varchar, '2024-08-28'::date, '2024-08-30'::date, 100, '10:00:00'::time);
 
 
 
--- select * from produto
+
+
+
