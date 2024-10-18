@@ -355,18 +355,10 @@ create trigger trg_log_lance
 execute procedure func_log_lance();
 
 
-select * from cooperativa c 
-select * from endereco e 
-select * from produto
-select * from leilao l 
+select * from cooperativa c ;
 
+select * from endereco e ;
 
+select * from produto p ;
 
-
-
-
-
-
-
-
-
+select * from leilao l ;
